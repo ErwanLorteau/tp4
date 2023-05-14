@@ -23,17 +23,35 @@
 /****************************************************/
 #include "src/lbm_struct.h"
 #include "src/exercises.h"
+#include <ctype.h>
 
 /****************************************************/
 void lbm_comm_init_ex4(lbm_comm_t * comm, int total_width, int total_height)
 {
+    int rank;
+    int comm_size;
+    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    MPI_Comm_size( MPI_COMM_WORLD, &comm_size );
+
 	//
 	// TODO: calculate the splitting parameters for the current task.
 	//
 
 	// TODO: calculate the number of tasks along X axis and Y axis.
-	comm->nb_x = -1;
-	comm->nb_y = -1;
+	if (isdigit(total_width / comm_size )) {
+        comm->nb_x = total_width / comm_size ;
+        printf("%d\n",  comm->nb_x);
+    } else {
+        fatal("Error : not divisible") ;
+    }
+
+    if (isdigit(total_height / comm_size )) {
+        comm->nb_x = total_width / comm_size ;
+        printf("%d\n",  comm->nb_y);
+
+    } else {
+        fatal("Error : not divisible") ;
+    }
 
 	// TODO: calculate the current task position in the splitting
 	comm->rank_x = -1;
