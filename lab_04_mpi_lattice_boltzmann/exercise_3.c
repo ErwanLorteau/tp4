@@ -31,17 +31,47 @@ void lbm_comm_init_ex3(lbm_comm_t * comm, int total_width, int total_height)
 
 /****************************************************/
 void lbm_comm_ghost_exchange_ex3(lbm_comm_t * comm, lbm_mesh_t * mesh)
+
 {
-	//
-	// TODO: Implement the 1D communication with non-blocking MPI functions.
-	//
-	// To be used:
-	//    - DIRECTIONS: the number of doubles composing a cell
-	//    - double[9] lbm_mesh_get_cell(mesh, x, y): function to get the address of a particular cell.
-	//    - comm->width : The with of the local sub-domain (containing the ghost cells)
-	//    - comm->height : The height of the local sub-domain (containing the ghost cells)
-	
-	//example to access cell
-	//double * cell = lbm_mesh_get_cell(mesh, local_x, local_y);
-	//double * cell = lbm_mesh_get_cell(mesh, comm->width - 1, 0);
+    int rank;
+    int comm_size;
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &comm_size) ;
+
+    double *ghost_right = lbm_mesh_get_cell(mesh, comm->width - 1, 0);
+    double *my_right = lbm_mesh_get_cell(mesh, comm->width - 2, 0);
+    double *ghost_left = lbm_mesh_get_cell(mesh, 0, 0);
+    double *my_left = lbm_mesh_get_cell(mesh, 1, 0);
+
+
+    if ( rank == 0 ) {
+        int request_count = 0 ;
+        MPI_Request requests[2] ;
+        MPI_Irecv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &requests[request_count++]);
+        MPI_Isend(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &requests[request_count++]);
+        MPI_Waitall(request_count,requests, MPI_STATUSES_IGNORE) ;
+    }
+    if (rank == comm_size -1 ) {
+        int request_count = 0 ;
+        MPI_Request requests[2] ;
+        MPI_Irecv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, rank -1, 1, MPI_COMM_WORLD, &requests[request_count++]);
+        MPI_Isend(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &requests[request_count++]);
+        MPI_Waitall(request_count,requests, MPI_STATUSES_IGNORE) ;
+
+    }
+
+    if (rank > 0 && rank < comm_size-1 ) {
+        int request_count = 0 ;
+
+        MPI_Request requests[4] ;
+        MPI_Irecv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &requests[request_count++]);
+        MPI_Irecv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, rank + 1 , 1, MPI_COMM_WORLD, &requests[request_count++]);
+        MPI_Isend(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &requests[request_count++]);
+        MPI_Isend(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &requests[request_count++]);
+        MPI_Waitall(request_count,requests, MPI_STATUSES_IGNORE) ;
+
+    }
+
+    return ;
 }

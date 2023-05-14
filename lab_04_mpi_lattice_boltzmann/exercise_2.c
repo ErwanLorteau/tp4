@@ -31,19 +31,48 @@ void lbm_comm_init_ex2(lbm_comm_t * comm, int total_width, int total_height)
 }
 
 /****************************************************/
-void lbm_comm_ghost_exchange_ex2(lbm_comm_t * comm, lbm_mesh_t * mesh)
-{
-	//
-	// TODO: Implement the 1D communication with blocking MPI functions using
-	//       odd/even communications.
-	//
-	// To be used:
-	//    - DIRECTIONS: the number of doubles composing a cell
-	//    - double[9] lbm_mesh_get_cell(mesh, x, y): function to get the address of a particular cell.
-	//    - comm->width : The with of the local sub-domain (containing the ghost cells)
-	//    - comm->height : The height of the local sub-domain (containing the ghost cells)
-	
-	//example to access cell
-	//double * cell = lbm_mesh_get_cell(mesh, local_x, local_y);
-	//double * cell = lbm_mesh_get_cell(mesh, comm->width - 1, 0);
+void lbm_comm_ghost_exchange_ex2(lbm_comm_t * comm, lbm_mesh_t * mesh) {
+    int rank;
+    int comm_size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+
+    double *ghost_right = lbm_mesh_get_cell(mesh, comm->width - 1, 0);
+    double *my_right = lbm_mesh_get_cell(mesh, comm->width - 2, 0);
+    double *ghost_left = lbm_mesh_get_cell(mesh, 0, 0);
+    double *my_left = lbm_mesh_get_cell(mesh, 1, 0);
+
+
+    MPI_Status status;
+
+    if (rank == 0) {
+        MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD, &status);
+        MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD);
+        return ;
+    }
+
+    if (rank == comm_size - 1) {
+        MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
+        MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
+        return ;
+    }
+
+    //Even recv then send
+    if (rank % 2 == 0 && rank !=0 && rank !=comm_size-1) {
+        MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD, &status);
+        MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, 1, MPI_COMM_WORLD,  &status);
+
+        MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD);
+        MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, 1, MPI_COMM_WORLD);
+    }
+
+    //odd : send then receive
+    if (rank % 2 == 1 && rank !=0 && rank !=comm_size-1) {
+        MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, rank+1, 1, MPI_COMM_WORLD);
+        MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE,  rank-1, 1, MPI_COMM_WORLD);
+
+        MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, rank+ 1, 1, MPI_COMM_WORLD, &status);
+        MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE,  rank- 1, 1, MPI_COMM_WORLD, &status);
+    }
+
 }
