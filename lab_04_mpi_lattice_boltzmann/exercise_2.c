@@ -45,34 +45,42 @@ void lbm_comm_ghost_exchange_ex2(lbm_comm_t * comm, lbm_mesh_t * mesh) {
 
     MPI_Status status;
 
-    if (rank == 0) {
-        MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD, &status);
-        MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD);
-        return ;
-    }
+    //odd : send then receive
+    if (rank % 2 == 1) {
+        if (rank != comm_size -1) {
+            MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
+        }
+        if (rank != 0) {
+            MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
+        }
 
-    if (rank == comm_size - 1) {
-        MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
-        MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
-        return ;
+        if( rank != comm_size -1 ) {
+            MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
+        }
+        if (rank != 0) {
+            MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
+        }
+        return  ;
     }
 
     //Even recv then send
-    if (rank % 2 == 0 && rank !=0 && rank !=comm_size-1) {
-        MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD, &status);
-        MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, 1, MPI_COMM_WORLD,  &status);
+    if (rank % 2 == 0 ) {
+        if( rank != comm_size -1 ) {
+            MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD, &status);
+        }
 
-        MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD);
-        MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, 1, MPI_COMM_WORLD);
+        if (rank != 0) {
+            MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, 1, MPI_COMM_WORLD, &status);
+        }
+        if( rank != comm_size -1 ) {
+            MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD);
+        }
+
+        if (rank != 0) {
+            MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, 1, MPI_COMM_WORLD);
+        }
+        return  ;
     }
-
-    //odd : send then receive
-    if (rank % 2 == 1 && rank !=0 && rank !=comm_size-1) {
-        MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, rank+1, 1, MPI_COMM_WORLD);
-        MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE,  rank-1, 1, MPI_COMM_WORLD);
-
-        MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, rank+ 1, 1, MPI_COMM_WORLD, &status);
-        MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE,  rank- 1, 1, MPI_COMM_WORLD, &status);
-    }
+    return  ;
 
 }

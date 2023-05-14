@@ -64,10 +64,6 @@ void lbm_comm_init_ex1(lbm_comm_t * comm, int total_width, int total_height)
 /****************************************************/
 void lbm_comm_ghost_exchange_ex1(lbm_comm_t * comm, lbm_mesh_t * mesh)
 {
-    int rank;
-    int comm_size;
-    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-    MPI_Comm_size( MPI_COMM_WORLD, &comm_size );
     //
     // TODO: Implement the 1D communication with blocking MPI functions (MPI_Send & MPI_Recv)
     //
@@ -81,59 +77,34 @@ void lbm_comm_ghost_exchange_ex1(lbm_comm_t * comm, lbm_mesh_t * mesh)
     //double * cell = lbm_mesh_get_cell(mesh, local_x, local_y);
     //double * cell = lbm_mesh_get_cell(mesh, comm->width - 1, 0);
 
+
     double* ghost_right = lbm_mesh_get_cell(mesh, comm->width - 1, 0);
     double* my_right = lbm_mesh_get_cell(mesh, comm->width - 2, 0);
     double* ghost_left = lbm_mesh_get_cell(mesh, 0, 0);
     double* my_left = lbm_mesh_get_cell(mesh, 1, 0);
 
-    int send_tag = 1;
-    int recv_tag = 2;
 
     MPI_Status status;
 
-    // first (leftmost) block: sends to/recieves from only the right cell
-    /*if(rank == 0)
+    /*
+    Send data between processors in wave-like pattern.
+
+
+    */
+    //MPI_Barrier(comm)
+
+
+    if(comm->rank_x > 0)
     {
-        MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, send_tag, MPI_COMM_WORLD);
-        MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, recv_tag, MPI_COMM_WORLD, &status);
-    }*/
-/*
-    MPI_Barrier(MPI_COMM_WORLD) ;
-
-
-    // middle blocks left to rigth
-    for (int i = 1 ; i <= comm_size -1  ; i++ ) {
-        if (rank = i ) {
-        MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, recv_tag, MPI_COMM_WORLD, &status);
-        MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, send_tag, MPI_COMM_WORLD);
-        }
+        MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, 1, MPI_COMM_WORLD, &status);
     }
-
-    MPI_Barrier(MPI_COMM_WORLD) ;
-
-    //last receive and change direction
-    if(rank == comm_size - 1)
-    { // last (rightmost) block!
-        MPI_Recv(ghost_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, recv_tag, MPI_COMM_WORLD, &status);
-        MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, send_tag, MPI_COMM_WORLD);
+    if(comm->rank_x < comm->nb_x - 1)
+    {
+        MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD);
+        MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, 1, MPI_COMM_WORLD, &status);
     }
-    MPI_Barrier(MPI_COMM_WORLD) ;
-
-    for (int i = comm_size ; i <= 1  ; i-- ) {
-        if (rank = i ) {
-        MPI_Recv(ghost_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, recv_tag, MPI_COMM_WORLD, &status);
-        MPI_Send(my_right, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x + 1, send_tag, MPI_COMM_WORLD);
-        }
+    if(comm->rank_x > 0)
+    {
+        MPI_Send(my_left, comm->height * DIRECTIONS, MPI_DOUBLE, comm->rank_x - 1, 1, MPI_COMM_WORLD);
     }
-
-    MPI_Barrier(MPI_COMM_WORLD) ;
-
-
-
-    //last
-
-
-    MPI_Barrier(MPI_COMM_WORLD) ;
-*/
-    return ;
 }
